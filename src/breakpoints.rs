@@ -15,6 +15,7 @@ pub struct Breakpoint {
     id: usize,
 }
 
+#[derive(Debug, Default)]
 pub struct BreakpointManager {
     breakpoints: [Option<Breakpoint>; 4],
 }
@@ -36,20 +37,21 @@ impl BreakpointManager {
     // }
 
     pub fn add_breakpoint(&mut self, addr: u64) -> Option<usize> {
-        for (id, bp) in self
+        if let Some((id, bp)) = self
             .breakpoints
             .iter_mut()
             .enumerate()
-            .filter(|(_, bp)| bp.is_none())
+            .find(|(_, bp)| bp.is_none())
         {
             *bp = Some(Breakpoint { addr, id });
-            return Some(id);
+            Some(id)
+        } else {
+            None
         }
-        None
     }
 
     pub fn list_breakpoints(&self) -> Vec<Breakpoint> {
-        self.breakpoints.iter().copied().filter_map(|b| b).collect()
+        self.breakpoints.iter().copied().flatten().collect()
     }
 
     pub fn clear_breakpoint(&mut self, id: usize) {
@@ -92,23 +94,21 @@ impl BreakpointManager {
                             3 => ctx.Dr3 = bp.addr,
                             _ => unreachable!("Only 4 breakpoints possible right now!"),
                         }
-                        let pattern = !(0b1111u64 << (idx as u64 * 4 + 16));
-                        ctx.Dr7 = ctx.Dr7 & pattern;
+                        ctx.Dr7 &= !(0b1111u64 << (idx as u64 * 4 + 16));
                         // Enable breakpoint.
-                        let pattern = 1u64 << (idx as u64 * 2);
-                        ctx.Dr7 = ctx.Dr7 | pattern;
+                        ctx.Dr7 |= 1u64 << (idx as u64 * 2);
                     }
                     None => {
                         // Disable breakpoint.
                         let pattern = !(1u64 << (idx as u64 * 2));
-                        ctx.Dr7 = ctx.Dr7 & pattern;
+                        ctx.Dr7 &= pattern;
                     }
                 }
             }
 
             // This prevents the current thread from hitting a breakpoint on the current instruction
             if *thread_id == resume_thread_id {
-                ctx.EFlags = ctx.EFlags | (1 << 16);
+                ctx.EFlags |= 1 << 16;
             }
             unsafe {
                 SetThreadContext(&thread, ctx.as_ptr())

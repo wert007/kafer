@@ -28,6 +28,7 @@ mod events;
 mod ffi;
 mod memory;
 mod processes;
+mod stack;
 
 #[allow(dead_code)]
 pub struct Debugger {

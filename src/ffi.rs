@@ -9,6 +9,7 @@ use windows::{
 };
 
 #[repr(align(16))]
+#[derive(Clone, Copy)]
 pub struct AlignedContext(pub(super) CONTEXT);
 
 const fn zero_context() -> CONTEXT {
@@ -142,9 +143,9 @@ pub struct WideString {
     buffer: Vec<u16>,
 }
 
-impl Into<WideString> for String {
-    fn into(self) -> WideString {
-        let input = self.as_bytes();
+impl From<String> for WideString {
+    fn from(val: String) -> Self {
+        let input = val.as_bytes();
         let mut buffer = Vec::new();
         let mut input_pos = 0;
         while let Some(mut code_point) = decode_utf8_char(input, &mut input_pos) {
@@ -232,7 +233,7 @@ fn decode_utf8_char(bytes: &[u8], pos: &mut usize) -> Option<u32> {
             return None;
         }
         let result = ((ch & 0x0f) << 12) | ((ch2 & 0x3f) << 6) | (ch3 & 0x3f);
-        if result <= 0x7ff || (0xd800 <= result && result <= 0xdfff) {
+        if result <= 0x7ff || (0xd800..=0xdfff).contains(&result) {
             return None;
         }
         return Some(result);

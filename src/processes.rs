@@ -2,8 +2,9 @@ use pdb2::{AddressMap, DebugInformation, FallibleIterator, ModuleInfo, SymbolDat
 use std::{borrow::Cow, fs::File};
 use windows::Win32::System::{
     Diagnostics::Debug::{
-        IMAGE_DEBUG_DIRECTORY, IMAGE_DEBUG_TYPE_CODEVIEW, IMAGE_DIRECTORY_ENTRY_DEBUG,
-        IMAGE_DIRECTORY_ENTRY_EXPORT, IMAGE_NT_HEADERS64,
+        IMAGE_DATA_DIRECTORY, IMAGE_DEBUG_DIRECTORY, IMAGE_DEBUG_TYPE_CODEVIEW,
+        IMAGE_DIRECTORY_ENTRY, IMAGE_DIRECTORY_ENTRY_DEBUG, IMAGE_DIRECTORY_ENTRY_EXPORT,
+        IMAGE_NT_HEADERS64,
     },
     SystemInformation::IMAGE_FILE_MACHINE_AMD64,
     SystemServices::{IMAGE_DOS_HEADER, IMAGE_EXPORT_DIRECTORY},
@@ -79,15 +80,14 @@ impl Process {
     }
 
     pub fn address_to_name(&mut self, address: u64) -> Option<String> {
-        let module = self.get_containing_module_mut(address)?;
+        let module = self.get_module_by_address_mut(address)?;
         let mut closest: AddressMatch = AddressMatch::None;
         let mut closest_addr: u64 = 0;
         // This could be faster if we were always in sorted order
         if let Some(export) = module
             .exports
             .iter()
-            .filter(|e| e.target.as_rva().is_some_and(|a| a <= address))
-            .next()
+            .find(|e| e.target.as_rva().is_some_and(|a| a <= address))
         {
             if closest.is_none() {
                 closest = AddressMatch::Export(export);
@@ -128,7 +128,7 @@ impl Process {
         })
     }
 
-    fn get_containing_module_mut(&mut self, address: u64) -> Option<&mut Module> {
+    pub(crate) fn get_module_by_address_mut(&mut self, address: u64) -> Option<&mut Module> {
         self.modules
             .iter_mut()
             .find(|m| m.contains_address(address))
@@ -148,6 +148,10 @@ impl Process {
 
     pub(crate) fn module_names(&self) -> Vec<String> {
         self.modules.iter().map(|m| m.name().into_owned()).collect()
+    }
+
+    pub(crate) fn get_module_by_address(&self, address: u64) -> Option<&Module> {
+        self.modules.iter().find(|m| m.contains_address(address))
     }
 }
 
@@ -173,6 +177,7 @@ struct ModuleBuilder {
     pub pdb_info: Option<PdbInfo>,
     pub pdb: Option<PDB<'static, File>>,
     pub address_map: Option<AddressMap<'static>>,
+    pe_header: IMAGE_NT_HEADERS64,
 }
 
 impl ModuleBuilder {
@@ -307,6 +312,7 @@ impl ModuleBuilder {
                 pdb_info: self.pdb_info,
                 pdb: self.pdb,
                 address_map: self.address_map,
+                pe_header: self.pe_header,
                 debug_information: None,
                 module_informations: Vec::new(),
             });
@@ -318,8 +324,7 @@ impl ModuleBuilder {
             .map(|m| m.map(|m| pdb.module_info(&m)))
             .collect();
         let module_informations = module_informations??;
-        let module_informations: Vec<_> =
-            module_informations.into_iter().filter_map(|m| m).collect();
+        let module_informations: Vec<_> = module_informations.into_iter().flatten().collect();
         Ok(Module {
             name: self.name,
             address: self.address,
@@ -329,6 +334,7 @@ impl ModuleBuilder {
             pdb_info: self.pdb_info,
             pdb: self.pdb,
             address_map: self.address_map,
+            pe_header: self.pe_header,
             debug_information: Some(debug_information),
             module_informations,
         })
@@ -346,6 +352,7 @@ pub struct Module {
     pub address_map: Option<AddressMap<'static>>,
     pub debug_information: Option<DebugInformation<'static>>,
     pub module_informations: Vec<ModuleInfo<'static>>,
+    pe_header: IMAGE_NT_HEADERS64,
 }
 
 impl std::fmt::Debug for Module {
@@ -398,6 +405,7 @@ impl Module {
             name,
             address,
             size,
+            pe_header,
             ..Default::default()
         };
 
@@ -416,8 +424,7 @@ impl Module {
         self.exports
             .iter()
             .find(|e| e.name.as_ref().is_some_and(|e| e == function_name))
-            .map(|e| e.target.as_rva())
-            .flatten()
+            .and_then(|e| e.target.as_rva())
             .or_else(|| self.resolve_symbol(function_name))
     }
 
@@ -426,19 +433,29 @@ impl Module {
         for pdb_module in &self.module_informations {
             let mut symbols = pdb_module.symbols().ok()?;
             while let Some(sym) = symbols.next().ok()? {
-                if let Ok(parsed) = sym.parse() {
-                    if let SymbolData::Procedure(proc_data) = parsed {
-                        if proc_data.name.to_string() == function_name {
-                            let rva = proc_data.offset.to_rva(address_map)?;
-                            let address = self.address + rva.0 as u64;
-                            return Some(address);
-                        }
+                if let Ok(SymbolData::Procedure(proc_data)) = sym.parse() {
+                    if proc_data.name.to_string() == function_name {
+                        let rva = proc_data.offset.to_rva(address_map)?;
+                        let address = self.address + rva.0 as u64;
+                        return Some(address);
                     }
                 }
             }
         }
         // }
         None
+    }
+
+    pub(crate) fn get_data_directory(
+        &self,
+        entry: IMAGE_DIRECTORY_ENTRY,
+    ) -> Option<IMAGE_DATA_DIRECTORY> {
+        let result = self.pe_header.OptionalHeader.DataDirectory[entry.0 as usize];
+        if result.Size == 0 || result.VirtualAddress == 0 {
+            None
+        } else {
+            Some(result)
+        }
     }
 }
 

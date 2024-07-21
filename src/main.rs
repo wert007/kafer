@@ -49,6 +49,21 @@ fn main() -> anyhow::Result<()> {
                         println!("Module {name}");
                     }
                 }
+                &["k"] => {
+                    for (frame_number, stack_frame) in event.stack_frames().iter().enumerate() {
+                        // TODO: Hide CONTEXT or AlignedContext type from public
+                        // interface!
+                        let context = stack_frame.context;
+                        if let Some(sym) = event.look_up_symbol(context.Rip) {
+                            println!("{:02X} 0x{:016X} {}", frame_number, context.Rsp, sym);
+                        } else {
+                            println!(
+                                "{:02X} 0x{:016X} 0x{:X}",
+                                frame_number, context.Rsp, context.Rip
+                            );
+                        }
+                    }
+                }
                 &["bp"] => {
                     for bp in event.breakpoints() {
                         match event.look_up_symbol(bp.addr) {

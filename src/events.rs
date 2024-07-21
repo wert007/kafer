@@ -35,6 +35,7 @@ use crate::{
     ffi::{AlignedContext, AutoClosedHandle},
     memory::{MemorySource, ProcessMemoryReader},
     processes::Process,
+    stack::StackFrame,
     Debugger,
 };
 
@@ -140,9 +141,9 @@ impl DebugEventKind {
     fn continue_status(&self) -> NTSTATUS {
         match self {
             Self::Exception(exception) => {
-                if exception.expect_step_exception && exception.code == ExceptionCode::SingleStep {
-                    DBG_CONTINUE
-                } else if exception.breakpoint.is_some() {
+                if (exception.expect_step_exception && exception.code == ExceptionCode::SingleStep)
+                    || exception.breakpoint.is_some()
+                {
                     DBG_CONTINUE
                 } else {
                     DBG_EXCEPTION_NOT_HANDLED
@@ -246,6 +247,18 @@ impl<'a> DebugEvent<'a> {
 
     pub fn clear_breakpoint(&mut self, index: usize) {
         self.parent.clear_breakpoint(index);
+    }
+
+    pub fn stack_frames(&mut self) -> Vec<StackFrame> {
+        let mut result = Vec::new();
+        let mut current = StackFrame::new(self.ctx);
+        result.push(current);
+        let memory_reader = self.parent.memory_reader();
+        while let Some(parent) = current.find_parent(&mut self.parent.process, &memory_reader) {
+            result.push(parent);
+            current = parent;
+        }
+        result
     }
 }
 
