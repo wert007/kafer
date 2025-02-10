@@ -41,6 +41,13 @@ impl Registers<'static> {
         }
     }
 
+    pub fn get_by_name(&self, name: &str) -> Option<u64> {
+        self.registers
+            .iter()
+            .find(|r| r.name == name)
+            .map(|r| r.value)
+    }
+
     pub fn print(&self) {
         for line in self.registers.chunks(3) {
             for reg in line {

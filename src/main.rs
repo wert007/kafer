@@ -64,6 +64,12 @@ fn main() -> anyhow::Result<()> {
                         }
                     }
                 }
+                &["d" | "u", addr] if parse_addr(addr, &event).is_some() => {
+                    let addr = parse_addr(addr, &event).unwrap();
+                    for instruction in event.disassemble_at(addr, 8)? {
+                        println!("{instruction}");
+                    }
+                }
                 &["bp"] => {
                     for bp in event.breakpoints() {
                         match event.look_up_symbol(bp.addr) {
@@ -134,7 +140,13 @@ fn handle_event(event: &DebugEvent) -> anyhow::Result<()> {
 
 fn parse_addr(addr: &str, event: &DebugEvent) -> Option<usize> {
     match addr.split_once('!') {
-        None => parse_usize(addr),
+        None => {
+            if let Some(register) = addr.strip_prefix('@') {
+                event.registers().get_by_name(register).map(|u| u as _)
+            } else {
+                parse_usize(addr)
+            }
+        }
         Some((module_name, function_name)) => event
             .resolve_symbol(module_name, function_name)
             .map(|u| u as _),

@@ -31,6 +31,7 @@ use windows::Win32::{
 
 use crate::{
     breakpoints::BreakpointManager,
+    disassembler::{self, Instruction},
     error::{Error, WindowsError, WindowsFunction},
     ffi::{AlignedContext, AutoClosedHandle},
     memory::{MemorySource, ProcessMemoryReader},
@@ -259,6 +260,15 @@ impl<'a> DebugEvent<'a> {
             current = parent;
         }
         result
+    }
+
+    pub fn disassemble_at(
+        &self,
+        addr: usize,
+        line_count: usize,
+    ) -> Result<Vec<Instruction>, Error> {
+        let memory = self.parent.memory_reader();
+        disassembler::disassemble(memory, addr as _, line_count)
     }
 }
 

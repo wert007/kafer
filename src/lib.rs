@@ -23,6 +23,7 @@ use windows::{
 
 use crate::error::{WindowsError, WindowsFunction};
 mod breakpoints;
+mod disassembler;
 mod error;
 mod events;
 mod ffi;
