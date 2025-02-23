@@ -1,5 +1,5 @@
 use anyhow::anyhow;
-use kafer::{DebugEvent, Debugger};
+use kafer_core::{DebugEvent, DebugEventKind, Debugger};
 
 fn main() -> anyhow::Result<()> {
     let program: Vec<String> = std::env::args().collect();
@@ -107,8 +107,8 @@ fn main() -> anyhow::Result<()> {
 
 fn handle_event(event: &DebugEvent) -> anyhow::Result<()> {
     match &event.kind {
-        kafer::DebugEventKind::Unknown => (),
-        kafer::DebugEventKind::Exception(exception) => {
+        DebugEventKind::Unknown => (),
+        DebugEventKind::Exception(exception) => {
             if let Some(bp) = exception.breakpoint {
                 println!("[kafer] Breakpoint #{bp} was hit.");
             } else {
@@ -118,22 +118,22 @@ fn handle_event(event: &DebugEvent) -> anyhow::Result<()> {
                 );
             }
         }
-        kafer::DebugEventKind::CreateThread => (),
-        kafer::DebugEventKind::CreateProcess(name) => {
+        DebugEventKind::CreateThread => (),
+        DebugEventKind::CreateProcess(name) => {
             println!("[kafer] Loaded dll {name}.");
         }
-        kafer::DebugEventKind::ExitThread => (),
-        kafer::DebugEventKind::ExitProcess => {
+        DebugEventKind::ExitThread => (),
+        DebugEventKind::ExitProcess => {
             println!("[kafer] Exited process!");
         }
-        kafer::DebugEventKind::LoadDll(name) => {
+        DebugEventKind::LoadDll(name) => {
             println!("[kafer] Loaded dll {name}.");
         }
-        kafer::DebugEventKind::UnloadDll => (),
-        kafer::DebugEventKind::OutputDebugString(text) => {
+        DebugEventKind::UnloadDll => (),
+        DebugEventKind::OutputDebugString(text) => {
             println!("[kafer] DebugOut: {text}");
         }
-        kafer::DebugEventKind::RipEvent => (),
+        DebugEventKind::RipEvent => (),
     }
     Ok(())
 }
