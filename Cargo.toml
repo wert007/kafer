@@ -1,2 +1,3 @@
 [workspace]
-members = ["kafer-core"]
+members = ["kafer-core", "query-pdb"]
+resolver = "2"
