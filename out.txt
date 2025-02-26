@@ -1,0 +1,121 @@
+   Compiling query-pdb v0.1.0 (C:\dev\rust\kafer\query-pdb)
+warning: unused import: `io::Cursor`
+ --> query-pdb\src\code_view.rs:1:25
+  |
+1 | use std::{fmt::Display, io::Cursor};
+  |                         ^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` on by default
+
+warning: unused import: `CodeViewString`
+ --> query-pdb\src\parser.rs:3:30
+  |
+3 | use crate::code_view::{self, CodeViewString};
+  |                              ^^^^^^^^^^^^^^
+
+warning: fields `files` and `reader` are never read
+  --> query-pdb\src\lib.rs:10:5
+   |
+9  | pub struct DebugSymbolsCollection<'s, S> {
+   |            ---------------------- fields in this struct
+10 |     files: HashMap<PathBuf, DebugSymbolsFromFile>,
+   |     ^^^^^
+11 |     reader: pdb2::PDB<'s, S>,
+   |     ^^^^^^
+   |
+   = note: `DebugSymbolsCollection` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+   = note: `#[warn(dead_code)]` on by default
+
+warning: enum `RecordType` is never used
+ --> query-pdb\src\code_view.rs:6:10
+  |
+6 | pub enum RecordType {
+  |          ^^^^^^^^^^
+
+warning: associated function `new` is never used
+  --> query-pdb\src\code_view.rs:22:12
+   |
+21 | impl CodeViewString {
+   | ------------------- associated function in this implementation
+22 |     pub fn new(bytes: Vec<u8>) -> Self {
+   |            ^^^
+
+warning: field `0` is never read
+   --> query-pdb\src\code_view.rs:149:13
+    |
+149 |     Symbol1(CompileSym1),
+    |     ------- ^^^^^^^^^^^
+    |     |
+    |     field in this variant
+    |
+    = note: `CompileSym` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+help: consider changing the field to be of unit type to suppress this warning while preserving the field numbering, or remove the field
+    |
+149 |     Symbol1(()),
+    |             ~~
+
+warning: field `0` is never read
+   --> query-pdb\src\code_view.rs:150:13
+    |
+150 |     Symbol3(CompileSym3),
+    |     ------- ^^^^^^^^^^^
+    |     |
+    |     field in this variant
+    |
+    = note: `CompileSym` has a derived impl for the trait `Debug`, but this is intentionally ignored during dead code analysis
+help: consider changing the field to be of unit type to suppress this warning while preserving the field numbering, or remove the field
+    |
+150 |     Symbol3(()),
+    |             ~~
+
+warning: `query-pdb` (lib) generated 7 warnings (run `cargo fix --lib -p query-pdb` to apply 2 suggestions)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.84s
+     Running `target\debug\query-pdb.exe`
+[query-pdb\src\lib.rs:84:9] _version.unwrap() = Symbol3(
+    CompileSym3 {
+        reclen: 58,
+        rectyp: 4412,
+        flags: CompileSym3Flags {
+            language: 1,
+            flags: 96,
+            pad: 0,
+        },
+        machine: 208,
+        ver_frontend_major: 19,
+        ver_frontend_eminor: 28,
+        ver_frontend_build: 29395,
+        ver_frontend_qfe: 6,
+        ver_major: 19,
+        ver_minor: 28,
+        ver_build: 29395,
+        ver_qfe: 12,
+        version: NullString("Microsoft (R) Optimizing Compiler"),
+    },
+)
+thread 'main' panicked at query-pdb\src\lib.rs:90:65:
+called `Option::unwrap()` on a `None` value
+stack backtrace:
+   0: std::panicking::begin_panic_handler
+             at /rustc/f6e511eec7342f59a25f7c0534f1dbea00d01b14\library/std\src\panicking.rs:662
+   1: core::panicking::panic_fmt
+             at /rustc/f6e511eec7342f59a25f7c0534f1dbea00d01b14\library/core\src\panicking.rs:74
+   2: core::panicking::panic
+             at /rustc/f6e511eec7342f59a25f7c0534f1dbea00d01b14\library/core\src\panicking.rs:148
+   3: core::option::unwrap_failed
+             at /rustc/f6e511eec7342f59a25f7c0534f1dbea00d01b14\library/core\src\option.rs:2015
+   4: enum2$<core::option::Option<query_pdb::code_view::Namespace> >::unwrap
+             at /rustc/f6e511eec7342f59a25f7c0534f1dbea00d01b14\library\core\src\option.rs:965
+   5: query_pdb::DebugSymbolsFromFile::read
+             at .\query-pdb\src\lib.rs:90
+   6: query_pdb::read_symbols_for_file
+             at .\query-pdb\src\lib.rs:63
+   7: query_pdb::DebugSymbolsCollection<std::fs::File>::read_from_file<ref$<str$> >
+             at .\query-pdb\src\lib.rs:28
+   8: query_pdb::main
+             at .\query-pdb\src\main.rs:4
+   9: core::ops::function::FnOnce::call_once<void (*)(),tuple$<> >
+             at /rustc/f6e511eec7342f59a25f7c0534f1dbea00d01b14\library\core\src\ops\function.rs:250
+  10: core::hint::black_box
+             at /rustc/f6e511eec7342f59a25f7c0534f1dbea00d01b14\library\core\src\hint.rs:388
+note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+error: process didn't exit successfully: `target\debug\query-pdb.exe` (exit code: 101)
